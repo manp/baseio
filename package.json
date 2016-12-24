@@ -1,0 +1,25 @@
+{
+  "name": "baseio",
+  "version": "1.0.0",
+  "description": "simple NodeJs web server",
+  "main": "base.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/manp/baseio.git"
+  },
+  "keywords": [
+    "http",
+    "server",
+    "node",
+    "base"
+  ],
+  "author": "Mostafa Alinaghi-pour",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/manp/baseio/issues"
+  },
+  "homepage": "https://github.com/manp/baseio#readme"
+}
