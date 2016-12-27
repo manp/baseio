@@ -1,110 +1,153 @@
-let EventEmitter=require('events').EventEmitter;
-let url=require('url');
-let queryString=require('querystring');
-let fileSystem=require('fs');
-class Base extends EventEmitter{
+let EventEmitter = require('events').EventEmitter;
+let url = require('url');
+let queryString = require('querystring');
+let fileSystem = require('fs');
+class Base extends EventEmitter {
 
-    constructor(server){
+    constructor(server = new require('http').Server()) {
         super();
-        this.serverInstance=server;
-        this.staticDirectory=undefined;
-        this.getAliases=[];
-        this.postAliases=[];
+        this.serverInstance = server;
+        this.staticDirectory = undefined;
+        this.getAliases = [];
+        this.postAliases = [];
         this.init();
 
     }
-    init(){
-        this.serverInstance.prependListener('request',(request,response)=>{
-            let requestUrl=url.parse(request.url,true);
-        let hasAnswer=this.checkStatic(request,response,requestUrl);
 
-        if(!hasAnswer){
-            hasAnswer=this.checkGet(request,response,requestUrl);
-        }
-        if(!hasAnswer){
-            hasAnswer=this.checkPost(request,response,requestUrl);
-        }
-        if(!hasAnswer){
+    init() {
+        this.serverInstance.prependListener('request', (request, response) => {
+            let requestUrl = url.parse(request.url, true);
 
-            response.writeHead(404,{'Content-Type':'text/html'});
-            response.end('404 file not found');
-        }
+            let hasAnswer = this.checkStatic(request, response, requestUrl);
 
-    })
+            this.initResponse(response);
+
+            if (!hasAnswer) {
+                hasAnswer = this.checkGet(request, response, requestUrl);
+            }
+            if (!hasAnswer) {
+                hasAnswer = this.checkPost(request, response, requestUrl);
+            }
+            if (!hasAnswer) {
+
+                response.writeHead(404, {'Content-Type': 'text/html'});
+                response.end('404 file not found');
+            }
+
+        });
     }
 
-    get(pattern,onGet){
-        this.getAliases.push({pattern:new RegExp(pattern),callback:onGet})
+    initResponse(response) {
+        response.startType = function (mimetype, code = 200) {
+            this.writeHead(code, {'Content-Type': mimetype});
+        };
+        response.startHtml = function (code = 200) {
+            this.writeHead(code, {'Content-Type': 'text/html'});
+        };
+        response.startStream = function () {
+            this.writeHead(200, {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive'
+            });
+        };
+
+        response.render = function (path, data = undefined) {
+            fileSystem.readFile(path, (error, res) => {
+
+                if (data == undefined) {
+                    this.end(res.toString());
+                } else {
+                    res = res.toString();
+                    for (let i in data) {
+                        res = res.replace(new RegExp(`\{\{${i}\}\}`, 'g'), data[i]);
+                    }
+                    this.end(res);
+                }
+            });
+        };
+        response.stream = {};
+        response.stream.data = function (message) {
+            response.write(`data:${message}\n\n`);
+        };
+        response.stream.event = function (event, message) {
+            response.write(`event:${message}\n`);
+            response.write(`data:${message}\n\n`);
+        };
     }
 
-    post(pattern,onPost){
-        this.postAliases.push({pattern:new RegExp(pattern),callback:onPost})
+    get(pattern, onGet) {
+        this.getAliases.push({pattern: new RegExp(pattern), callback: onGet})
     }
 
-    setStaticDirectory(directory){
-        this.staticDirectory=directory;
+    post(pattern, onPost) {
+        this.postAliases.push({pattern: new RegExp(pattern), callback: onPost})
     }
 
-    checkStatic(request,response,requestUrl){
-        if(!this.staticDirectory){
+    setStaticDirectory(directory) {
+        this.staticDirectory = directory;
+    }
+
+    checkStatic(request, response, requestUrl) {
+        if (!this.staticDirectory) {
             return false;
         }
-        let address='./'+this.staticDirectory+requestUrl.pathname;
-        let extension=(/\.\w+$/).exec(address);
-        if(!extension){
-            if(address.substring(address.length-1)!='/'){
-                address+='/';
+        let address = './' + this.staticDirectory + requestUrl.pathname;
+        let extension = (/\.\w+$/).exec(address);
+        if (!extension) {
+            if (address.substring(address.length - 1) != '/') {
+                address += '/';
             }
-            address+='index.html';
-            extension='.html';
+            address += 'index.html';
+            extension = '.html';
         }
         else {
-            extension=extension[0];
+            extension = extension[0];
         }
 
-        if(fileSystem.existsSync(address)){
-            fileSystem.readFile(address,(error,data)=>{
-                response.writeHead(200,{'Content-Type':this.getMimeType(extension)});
-            response.end(data);
-        })
+        if (fileSystem.existsSync(address)) {
+            fileSystem.readFile(address, (error, data) => {
+                response.writeHead(200, {'Content-Type': this.getMimeType(extension)});
+                response.end(data);
+            })
             return true;
         }
         return false;
 
 
-
     }
 
-    getMimeType(extension){
-        let mimeTypes={
-            '.text' : 'text/plain',
-            '.html' : 'text/html',
-            '.css' : 'text/css',
-            '.js' : 'application/x-javascript',
-            '.jpg' : 'image/jpeg',
-            '.png' : 'image/png',
-            '.ttf' : 'application/font-ttf',
-            '.eot' : 'application/font-eot',
-            '.otf' : 'application/font-otf',
-            '.woff' : 'application/x-font-woff',
-            '.svg' : 'image/svg+xml'
+    getMimeType(extension) {
+        let mimeTypes = {
+            '.text': 'text/plain',
+            '.html': 'text/html',
+            '.css': 'text/css',
+            '.js': 'application/x-javascript',
+            '.jpg': 'image/jpeg',
+            '.png': 'image/png',
+            '.ttf': 'application/font-ttf',
+            '.eot': 'application/font-eot',
+            '.otf': 'application/font-otf',
+            '.woff': 'application/font-woff',
+            '.woff2': 'application/font-woff2',
+            '.svg': 'image/svg+xml'
 
-        }
-        if(mimeTypes.hasOwnProperty(extension)){
+        };
+        if (mimeTypes.hasOwnProperty(extension)) {
             return mimeTypes[extension];
         }
         return 'text/plain';
     }
 
-    checkGet(request,response,requestUrl){
-        if(request.method!='GET'){
+    checkGet(request, response, requestUrl) {
+        if (request.method != 'GET') {
             return false;
         }
 
-        for(let i in this.getAliases){
-            let match=this.getAliases[i].pattern.exec(requestUrl.pathname);
-            if(match){
-                this.getAliases[i].callback.call(this,request,response,requestUrl,requestUrl.query,match);
+        for (let i in this.getAliases) {
+            let match = this.getAliases[i].pattern.exec(requestUrl.pathname);
+            if (match) {
+                this.getAliases[i].callback.call(this, request, response, requestUrl, requestUrl.query, match);
                 return true;
             }
         }
@@ -112,32 +155,37 @@ class Base extends EventEmitter{
         return false;
     }
 
-    checkPost(request,response,requestUrl){
-        if(request.method!='POST'){
+    checkPost(request, response, requestUrl) {
+        if (request.method != 'POST') {
             return false;
         }
 
-        for(let i in this.postAliases){
-            let match=this.postAliases[i].pattern.exec(requestUrl.pathname);
-            if(match){
-                let postBody='';
-                request.on('data',(data)=>{
-                    postBody+=data;
-            })
-                request.on('end',()=>{
-                    postBody=queryString.parse(postBody);
-                this.postAliases[i].callback.call(this,request,response,requestUrl,postBody,match);
-            })
+        for (let i in this.postAliases) {
+            let match = this.postAliases[i].pattern.exec(requestUrl.pathname);
+            if (match) {
+                let postBody = '';
+                request.on('data', (data) => {
+                    postBody += data;
+                });
+                request.on('end', () => {
+                    postBody = queryString.parse(postBody);
+                    this.postAliases[i].callback.call(this, request, response, requestUrl, postBody, match);
+                });
 
                 return true;
             }
         }
 
         return false;
+    }
+
+    listen(path, callback = undefined) {
+
+        this.serverInstance.listen(path, callback)
     }
 
 
 }
 
 
-module.exports=Base;
+module.exports = Base;
