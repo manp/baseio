@@ -1,8 +1,6 @@
 const Base=require('./../base');
 let app=new Base();
 app.get('realtime',(req,res)=>{
-
-
     res.startStream();
     let i=0;
     setInterval(()=>{
@@ -15,8 +13,9 @@ app.get('realtime',(req,res)=>{
         }
     },1000);
 });
-app.get('/home',(req,res)=>{
+app.get('home',(req,res)=>{
     res.startHtml();
+    res.setHeader('XX','11');
     res.render('./index.html');
 });
 

@@ -39,17 +39,19 @@ class Base extends EventEmitter {
 
     initResponse(response) {
         response.startType = function (mimetype, code = 200) {
-            this.writeHead(code, {'Content-Type': mimetype});
+            this.statusCode=code;
+            this.setHeader('Content-Type',mimetype);
+
         };
         response.startHtml = function (code = 200) {
-            this.writeHead(code, {'Content-Type': 'text/html'});
+            this.statusCode=200;
+            this.setHeader('Content-Type','text/html');
         };
         response.startStream = function () {
-            this.writeHead(200, {
-                'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive'
-            });
+            this.statusCode=200;
+            this.setHeader('Content-Type','text/event-stream');
+            this.setHeader('Cache-Control','no-cache');
+            this.setHeader('Connection','keep-alive');
         };
 
         response.render = function (path, data = undefined) {
@@ -71,7 +73,7 @@ class Base extends EventEmitter {
             response.write(`data:${message}\n\n`);
         };
         response.stream.event = function (event, message) {
-            response.write(`event:${message}\n`);
+            response.write(`event:${event}\n`);
             response.write(`data:${message}\n\n`);
         };
     }
