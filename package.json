@@ -1,6 +1,6 @@
 {
   "name": "baseio",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "simple NodeJs web server",
   "main": "base.js",
   "scripts": {
