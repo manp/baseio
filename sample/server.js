@@ -1,6 +1,19 @@
 const Base=require('./../base');
 let app=new Base();
-app.get('realtime',(req,res)=>{
+app.get('/',(req,res)=>{
+    res.startHtml();
+    res.end('done');
+});
+
+
+//test this path with /user2002?action=deactive
+app.get(/user([\d]+)/,(req,res,url,get,match)=>{
+    res.startHtml()
+    res.write(JSON.stringify(get));
+    res.write(JSON.stringify(match));
+    res.end();
+})
+app.get('/realtime',(req,res)=>{
     res.startStream();
     let i=0;
     setInterval(()=>{
@@ -13,9 +26,8 @@ app.get('realtime',(req,res)=>{
         }
     },1000);
 });
-app.get('home',(req,res)=>{
+app.get('/home',(req,res)=>{
     res.startHtml();
-    res.setHeader('XX','11');
     res.render('./index.html');
 });
 

@@ -79,11 +79,11 @@ class Base extends EventEmitter {
     }
 
     get(pattern, onGet) {
-        this.getAliases.push({pattern: new RegExp(pattern), callback: onGet})
+        this.getAliases.push({pattern: pattern, callback: onGet})
     }
 
     post(pattern, onPost) {
-        this.postAliases.push({pattern: new RegExp(pattern), callback: onPost})
+        this.postAliases.push({pattern: pattern, callback: onPost})
     }
 
     setStaticDirectory(directory) {
@@ -145,15 +145,14 @@ class Base extends EventEmitter {
         if (request.method != 'GET') {
             return false;
         }
-
-        for (let i in this.getAliases) {
-            let match = this.getAliases[i].pattern.exec(requestUrl.pathname);
-            if (match) {
-                this.getAliases[i].callback.call(this, request, response, requestUrl, requestUrl.query, match);
+        for(let alias of this.getAliases){
+            let isRegEx = alias.pattern instanceof RegExp;
+            let match= isRegEx ?  alias.pattern.exec(requestUrl.pathname) : alias.pattern==requestUrl.pathname;
+            if(match){
+                alias.callback.call(this, request, response, requestUrl, requestUrl.query, isRegEx?match:[]);
                 return true;
             }
         }
-
         return false;
     }
 
@@ -162,22 +161,22 @@ class Base extends EventEmitter {
             return false;
         }
 
-        for (let i in this.postAliases) {
-            let match = this.postAliases[i].pattern.exec(requestUrl.pathname);
-            if (match) {
+        for(let alias of this.postAliases){
+            let isRegEx = alias.pattern instanceof RegExp;
+            let match= isRegEx ?  alias.pattern.exec(requestUrl.pathname) : alias.pattern==requestUrl.pathname;
+            if(match){
                 let postBody = '';
                 request.on('data', (data) => {
                     postBody += data;
                 });
                 request.on('end', () => {
                     postBody = queryString.parse(postBody);
-                    this.postAliases[i].callback.call(this, request, response, requestUrl, postBody, match);
+                    alias.callback.call(this, request, response, requestUrl, postBody, isRegEx?match:[]);
                 });
 
                 return true;
             }
         }
-
         return false;
     }
 
